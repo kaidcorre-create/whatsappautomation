@@ -1,0 +1,13 @@
+name = "whatsapp-daily-update"
+main = "src/worker.js"
+compatibility_date = "2025-01-01"
+
+[triggers]
+crons = ["0 9 * * *"]  # daily 09:00 UTC
+
+# Set via `wrangler secret put`:
+#   GREENAPI_ID          your instance ID (looks like 1101000001)
+#   GREENAPI_TOKEN       your instance API token
+#   WHATSAPP_GROUP_ID    e.g. 120363012345678901@g.us
+#   YOUR_API_KEY         your data API key
+#   MANUAL_TRIGGER_KEY   any random string for /run and /chats
