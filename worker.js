@@ -73,12 +73,12 @@ async function fetchFromD1(env) {
   const baptismMap = {};
   for (const row of baptism.results) baptismMap[row.status] = row.count;
 
-  // Endowment bookings (session_type = 'standard')
+  // Endowment bookings (session_type = 'endowment')
   const endowment = await db.prepare(`
     SELECT b.status, COUNT(*) as count
     FROM bookings b
     JOIN sessions s ON b.session_id = s.id
-    WHERE s.session_type = 'standard'
+    WHERE s.session_type = 'endowment'
     GROUP BY b.status
   `).all();
 
@@ -129,7 +129,7 @@ function formatMessage({ arrivalMap, baptismMap, endowmentMap, capacityMap, stag
     '*Temple Information:*',
     '',
     `• Baptism Sessions Confirmed - ${n(baptismMap, 'confirmed')}/${n(capacityMap, 'baptism')}`,
-    `• Endowment Sessions Confirmed - ${n(endowmentMap, 'confirmed')}/${n(capacityMap, 'standard')}`,
+    `• Endowment Sessions Confirmed - ${n(endowmentMap, 'confirmed')}/${n(capacityMap, 'endowment')}`,
     '',
     `• Baptism Sessions Waiting List - ${n(baptismMap, 'waitlist')}`,
     `• Endowment Sessions Waiting List - ${n(endowmentMap, 'waitlist')}`,
