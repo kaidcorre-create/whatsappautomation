@@ -128,6 +128,7 @@ function formatMessage({ arrivalMap, baptismMap, endowmentMap, capacityMap, stag
     `• Sunday - ${n(arrivalMap, 'sunday')}`,
     '',
     '*Temple Information:*',
+    'https://tinyurl.com/msm8hju5',
     '',
     `• Baptism Sessions Confirmed - ${n(baptismMap, 'confirmed')}/${n(capacityMap, 'baptism')}`,
     `• Endowment Sessions Confirmed - ${n(endowmentMap, 'confirmed')}/${n(capacityMap, 'endowment')}`,
