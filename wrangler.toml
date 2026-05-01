@@ -1,5 +1,5 @@
 name = "whatsapp-daily-update"
-main = "src/worker.js"
+main = "worker.js"
 compatibility_date = "2025-01-01"
 
 [triggers]

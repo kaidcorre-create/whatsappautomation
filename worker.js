@@ -26,6 +26,11 @@ export default {
       return Response.json(result);
     }
 
+    if (url.pathname === '/test' && url.searchParams.get('key') === env.MANUAL_TRIGGER_KEY) {
+      const result = await sendToWhatsApp('✅ Test message from the temple trip bot!', env);
+      return Response.json({ ok: true, result });
+    }
+
     // Helper to find your group ID — visit /chats?key=... once during setup
     if (url.pathname === '/chats' && url.searchParams.get('key') === env.MANUAL_TRIGGER_KEY) {
       const chats = await listChats(env);
@@ -70,17 +75,16 @@ function formatMessage(data) {
   return [
     `*OnebyOne Info - ${today}*`,
     '',
-    `*Arrivals`
-     '',  
+    `*Arrivals*`,
+    '',
     `*Friday 10am - 7pm:* ${data.arrivals.fridayone}`,
-     '', 
+    '',
     `*Friday 8pm onwards:* ${data.arrivals.fridaytwo}`,
-     '',
+    '',
     `*Saturday:* ${data.arrivals.saturday}`,
-     '',  
-    `*Ssunday:* ${data.arrivals.sunday}`,
-     '', 
-    '', 
+    '',
+    `*Sunday:* ${data.arrivals.sunday}`,
+    '',
     `*Baptisms*`,
     `  Confirmed: ${data.baptism.confirmed}`,
     `  Waiting list: ${data.baptism.waiting}`,
@@ -116,15 +120,10 @@ async function sendToWhatsApp(message, env) {
   return body; // { idMessage: "..." }
 }
 
-// --- Setup helper: list recent chats so you can find your group ID ---
+// --- Setup helper: list all chats so you can find your group ID ---
 async function listChats(env) {
-  const url = `https://api.green-api.com/waInstance${env.GREENAPI_ID}/lastIncomingMessages/${env.GREENAPI_TOKEN}`;
+  const url = `https://api.green-api.com/waInstance${env.GREENAPI_ID}/getChats/${env.GREENAPI_TOKEN}`;
   const res = await fetch(url);
   const body = await res.json();
-  // Pull unique chatIds + names
-  const seen = new Map();
-  for (const m of body) {
-    if (!seen.has(m.chatId)) seen.set(m.chatId, m.senderName ?? m.chatName ?? '');
-  }
-  return Array.from(seen, ([chatId, name]) => ({ chatId, name }));
+  return body.map(c => ({ chatId: c.id, name: c.name ?? '' }));
 }

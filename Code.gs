@@ -4,7 +4,7 @@
  * Spreadsheet structure (two sheets):
  *
  * Sheet: "Daily Stats"
- * Columns: Date | Arrivals | Baptism Confirmed | Baptism Waiting | Endowment Confirmed | Endowment Waiting | Mission Call | Papers In | Preparing Papers
+ * Columns: Date | Friday AM Arrivals | Friday PM Arrivals | Saturday Arrivals | Sunday Arrivals | Baptism Confirmed | Baptism Waiting | Endowment Confirmed | Endowment Waiting | Mission Call | Papers In | Preparing Papers
  *
  * Sheet: "Food Preferences"
  * Columns: Date | then one column per food type (e.g. Standard, Vegetarian, Vegan, Halal, Gluten Free)
@@ -76,7 +76,12 @@ function getTodayStats() {
 
   return {
     date: today.toISOString().split('T')[0],
-    arrivals: col('Arrivals'),
+    arrivals: {
+      fridayone: col('Friday AM Arrivals'),
+      fridaytwo: col('Friday PM Arrivals'),
+      saturday:  col('Saturday Arrivals'),
+      sunday:    col('Sunday Arrivals'),
+    },
     baptism: {
       confirmed: col('Baptism Confirmed'),
       waiting:   col('Baptism Waiting'),
