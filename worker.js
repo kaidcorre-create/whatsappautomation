@@ -68,10 +68,19 @@ function formatMessage(data) {
     .join('\n');
 
   return [
-    `*YSA Temple Trip — ${today}*`,
+    `*OnebyOne Info - ${today}*`,
     '',
-    `*Arrivals today:* ${data.arrivals}`,
-    '',
+    `*Arrivals`
+     '',  
+    `*Friday 10am - 7pm:* ${data.fridayone}`,
+     '', 
+    `*Friday 8pm onwards:* ${data.fridaytwo}`,
+     '',
+    `*Saturday:* ${data.saturday}`,
+     '',  
+    `*Ssunday:* ${data.sunday}`,
+     '', 
+    '', 
     `*Baptisms*`,
     `  Confirmed: ${data.baptism.confirmed}`,
     `  Waiting list: ${data.baptism.waiting}`,
@@ -80,10 +89,11 @@ function formatMessage(data) {
     `  Confirmed: ${data.endowment.confirmed}`,
     `  Waiting list: ${data.endowment.waiting}`,
     '',
-    `*Mission Status*`,
-    `  Call received: ${data.mission.call}`,
-    `  Papers in: ${data.mission.papersIn}`,
+    `*Missions*`,
     `  Preparing papers: ${data.mission.preparing}`,
+    `  Papers in: ${data.mission.papersIn}`,
+    `  Call received: ${data.mission.call}`,
+
     '',
     `*Food Preferences*`,
     foodLines || '  No data',
