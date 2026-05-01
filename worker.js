@@ -29,6 +29,13 @@ export default {
       return Response.json(chats);
     }
 
+    if (url.pathname === '/bookings' && url.searchParams.get('key') === env.MANUAL_TRIGGER_KEY) {
+      const bookings = await fetchAllBookings(env);
+      return Response.json(bookings, {
+        headers: { 'Access-Control-Allow-Origin': '*' },
+      });
+    }
+
     return new Response('OK');
   },
 };
@@ -156,6 +163,25 @@ async function sendToWhatsApp(message, env) {
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(`greenapi ${res.status}: ${JSON.stringify(body)}`);
   return body;
+}
+
+// --- Bookings export for Google Sheets ---
+async function fetchAllBookings(env) {
+  const { results } = await env.DB.prepare(`
+    SELECT
+      b.id,
+      b.name,
+      b.email,
+      b.created_at,
+      b.status,
+      b.baptism_role,
+      s.title   AS session_title,
+      s.session_type
+    FROM bookings b
+    JOIN sessions s ON b.session_id = s.id
+    ORDER BY s.session_type, s.title, b.status, b.created_at
+  `).all();
+  return results;
 }
 
 // --- Setup helper ---
