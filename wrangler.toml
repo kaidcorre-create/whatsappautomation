@@ -2,7 +2,7 @@ name = "whatsapp-daily-update"
 main = "worker.js"
 compatibility_date = "2025-01-01"
 
-# [triggers]
+[triggers]
 #crons = ["0 9 * * *"]  # daily 09:00 UTC
 
 # Set via `wrangler secret put`:
