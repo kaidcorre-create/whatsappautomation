@@ -48,27 +48,45 @@ async function sendDailyUpdate(env) {
   }
 }
 
-// --- 1. Replace with your actual API ---
+// --- 1. Fetch from Google Sheets web app ---
 async function fetchYourData(env) {
-  const res = await fetch('https://your-api.example.com/today', {
-    headers: { 'Authorization': `Bearer ${env.YOUR_API_KEY}` },
-  });
-  if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
-  return res.json();
+  const res = await fetch(env.SHEETS_WEB_APP_URL);
+  if (!res.ok) throw new Error(`Sheets ${res.status}: ${await res.text()}`);
+  const data = await res.json();
+  if (data.error) throw new Error(`Sheets error: ${data.error}`);
+  return data;
 }
 
 // --- 2. Format the message ---
-// WhatsApp formatting: *bold*, _italic_, ~strike~, ```code```
 function formatMessage(data) {
   const today = new Date().toLocaleDateString('en-GB', {
     weekday: 'long', day: 'numeric', month: 'long',
   });
+
+  const foodLines = Object.entries(data.food ?? {})
+    .map(([pref, count]) => `  • ${pref}: ${count}`)
+    .join('\n');
+
   return [
-    `*Daily Update — ${today}*`,
+    `*YSA Temple Trip — ${today}*`,
     '',
-    `Active users: ${data.users ?? 'n/a'}`,
-    `Revenue: £${data.revenue ?? 0}`,
-    `New signups: ${data.signups ?? 0}`,
+    `*Arrivals today:* ${data.arrivals}`,
+    '',
+    `*Baptisms*`,
+    `  Confirmed: ${data.baptism.confirmed}`,
+    `  Waiting list: ${data.baptism.waiting}`,
+    '',
+    `*Endowments*`,
+    `  Confirmed: ${data.endowment.confirmed}`,
+    `  Waiting list: ${data.endowment.waiting}`,
+    '',
+    `*Mission Status*`,
+    `  Call received: ${data.mission.call}`,
+    `  Papers in: ${data.mission.papersIn}`,
+    `  Preparing papers: ${data.mission.preparing}`,
+    '',
+    `*Food Preferences*`,
+    foodLines || '  No data',
   ].join('\n');
 }
 
