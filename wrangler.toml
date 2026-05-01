@@ -3,11 +3,15 @@ main = "worker.js"
 compatibility_date = "2025-01-01"
 
 [triggers]
-#crons = ["0 9 * * *"]  # daily 09:00 UTC
+crons = ["0 9 * * *"]  # daily 09:00 UTC — adjust to your preferred time
 
-# Set via `wrangler secret put`:
-#   GREENAPI_ID          your instance ID (looks like 1101000001)
+[[d1_databases]]
+binding = "DB"
+database_name = "ysa-temple-booking"
+database_id = "84b486fd-d33c-4b6d-ba46-bf9d70cea679"
+
+# Secrets set via `wrangler secret put`:
+#   GREENAPI_ID          your instance ID
 #   GREENAPI_TOKEN       your instance API token
-#   WHATSAPP_GROUP_ID    e.g. 120363012345678901@g.us
-#   YOUR_API_KEY         your data API key
-#   MANUAL_TRIGGER_KEY   any random string for /run and /chats
+#   WHATSAPP_GROUP_ID    e.g. 120363426993385382@g.us
+#   MANUAL_TRIGGER_KEY   any random string for /run and /test and /chats

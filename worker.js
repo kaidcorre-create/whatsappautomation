@@ -1,15 +1,9 @@
 /**
- * Daily WhatsApp group update via GreenAPI's free Developer plan.
+ * Daily WhatsApp group update via GreenAPI — reads directly from D1.
  *
  * Architecture:
- *   Cloudflare Worker (cron)  ──▶  GreenAPI  ──▶  WhatsApp group
- *
- * No VPS needed. GreenAPI holds the WhatsApp session for you.
- *
- * Free Developer plan limits to be aware of:
- *   - sendMessage: unlimited
- *   - You can only interact with 3 chats (a group counts as 1)
- *   - 1 instance per account
+ *   Cloudflare Worker (cron)  ──▶  D1 (ysa-temple-booking)
+ *                             ──▶  GreenAPI  ──▶  WhatsApp group
  */
 
 export default {
@@ -17,7 +11,6 @@ export default {
     ctx.waitUntil(sendDailyUpdate(env));
   },
 
-  // Manual trigger: GET /run?key=<MANUAL_TRIGGER_KEY>
   async fetch(request, env) {
     const url = new URL(request.url);
 
@@ -27,11 +20,10 @@ export default {
     }
 
     if (url.pathname === '/test' && url.searchParams.get('key') === env.MANUAL_TRIGGER_KEY) {
-      const result = await sendToWhatsApp('✅ Test message from the temple trip bot!', env);
+      const result = await sendToWhatsApp('✅ Test message from the OnebyOne bot!', env);
       return Response.json({ ok: true, result });
     }
 
-    // Helper to find your group ID — visit /chats?key=... once during setup
     if (url.pathname === '/chats' && url.searchParams.get('key') === env.MANUAL_TRIGGER_KEY) {
       const chats = await listChats(env);
       return Response.json(chats);
@@ -43,7 +35,7 @@ export default {
 
 async function sendDailyUpdate(env) {
   try {
-    const data = await fetchYourData(env);
+    const data = await fetchFromD1(env);
     const message = formatMessage(data);
     const result = await sendToWhatsApp(message, env);
     return { ok: true, result };
@@ -53,54 +45,100 @@ async function sendDailyUpdate(env) {
   }
 }
 
-// --- 1. Fetch from Google Sheets web app ---
-async function fetchYourData(env) {
-  const res = await fetch(env.SHEETS_WEB_APP_URL);
-  if (!res.ok) throw new Error(`Sheets ${res.status}: ${await res.text()}`);
-  const data = await res.json();
-  if (data.error) throw new Error(`Sheets error: ${data.error}`);
-  return data;
+// --- 1. Query D1 ---
+async function fetchFromD1(env) {
+  const db = env.DB;
+
+  // Arrivals
+  const arrivals = await db.prepare(`
+    SELECT arrival, COUNT(*) as count
+    FROM arrival_responses
+    GROUP BY arrival
+  `).all();
+
+  const arrivalMap = {};
+  for (const row of arrivals.results) {
+    arrivalMap[row.arrival] = row.count;
+  }
+
+  // Baptism bookings (session_type = 'baptism')
+  const baptism = await db.prepare(`
+    SELECT b.status, COUNT(*) as count
+    FROM bookings b
+    JOIN sessions s ON b.session_id = s.id
+    WHERE s.session_type = 'baptism'
+    GROUP BY b.status
+  `).all();
+
+  const baptismMap = {};
+  for (const row of baptism.results) baptismMap[row.status] = row.count;
+
+  // Endowment bookings (session_type = 'standard')
+  const endowment = await db.prepare(`
+    SELECT b.status, COUNT(*) as count
+    FROM bookings b
+    JOIN sessions s ON b.session_id = s.id
+    WHERE s.session_type = 'standard'
+    GROUP BY b.status
+  `).all();
+
+  const endowmentMap = {};
+  for (const row of endowment.results) endowmentMap[row.status] = row.count;
+
+  // Total session capacity
+  const capacity = await db.prepare(`
+    SELECT session_type, SUM(capacity) as total
+    FROM sessions
+    GROUP BY session_type
+  `).all();
+
+  const capacityMap = {};
+  for (const row of capacity.results) capacityMap[row.session_type] = row.total;
+
+  // Mission stage
+  const stage = await db.prepare(`
+    SELECT stage, COUNT(*) as count
+    FROM stage_responses
+    GROUP BY stage
+  `).all();
+
+  const stageMap = {};
+  for (const row of stage.results) stageMap[row.stage] = row.count;
+
+  return { arrivalMap, baptismMap, endowmentMap, capacityMap, stageMap };
 }
 
 // --- 2. Format the message ---
-function formatMessage(data) {
+function formatMessage({ arrivalMap, baptismMap, endowmentMap, capacityMap, stageMap }) {
   const today = new Date().toLocaleDateString('en-GB', {
     weekday: 'long', day: 'numeric', month: 'long',
   });
 
-  const foodLines = Object.entries(data.food ?? {})
-    .map(([pref, count]) => `  • ${pref}: ${count}`)
-    .join('\n');
+  const n = (map, key) => map[key] ?? 0;
 
   return [
-    `*OnebyOne Info - ${today}*`,
+    `*OnebyOne Collected Data - ${today}*`,
     '',
-    `*Arrivals*`,
+    '*Arrival Information:*',
     '',
-    `*Friday 10am - 7pm:* ${data.arrivals.fridayone}`,
+    `• Friday 10am - 7pm - ${n(arrivalMap, 'friday_day')}`,
+    `• Friday 8pm onwards - ${n(arrivalMap, 'friday_evening')}`,
+    `• Saturday - ${n(arrivalMap, 'saturday')}`,
+    `• Sunday - ${n(arrivalMap, 'sunday')}`,
     '',
-    `*Friday 8pm onwards:* ${data.arrivals.fridaytwo}`,
+    '*Temple Information:*',
     '',
-    `*Saturday:* ${data.arrivals.saturday}`,
+    `• Baptism Sessions Confirmed - ${n(baptismMap, 'confirmed')}/${n(capacityMap, 'baptism')}`,
+    `• Endowment Sessions Confirmed - ${n(endowmentMap, 'confirmed')}/${n(capacityMap, 'standard')}`,
     '',
-    `*Sunday:* ${data.arrivals.sunday}`,
+    `• Baptism Sessions Waiting List - ${n(baptismMap, 'waitlist')}`,
+    `• Endowment Sessions Waiting List - ${n(endowmentMap, 'waitlist')}`,
     '',
-    `*Baptisms*`,
-    `  Confirmed: ${data.baptism.confirmed}`,
-    `  Waiting list: ${data.baptism.waiting}`,
+    '*Mission Information:*',
     '',
-    `*Endowments*`,
-    `  Confirmed: ${data.endowment.confirmed}`,
-    `  Waiting list: ${data.endowment.waiting}`,
-    '',
-    `*Missions*`,
-    `  Preparing papers: ${data.mission.preparing}`,
-    `  Papers in: ${data.mission.papersIn}`,
-    `  Call received: ${data.mission.call}`,
-
-    '',
-    `*Food Preferences*`,
-    foodLines || '  No data',
+    `• Preparing Papers - ${n(stageMap, 'preparing_papers')}`,
+    `• Papers in - ${n(stageMap, 'papers_in')}`,
+    `• Call Received - ${n(stageMap, 'call_received')}`,
   ].join('\n');
 }
 
@@ -111,16 +149,16 @@ async function sendToWhatsApp(message, env) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      chatId: env.WHATSAPP_GROUP_ID, // e.g. "120363012345678901@g.us"
+      chatId: env.WHATSAPP_GROUP_ID,
       message,
     }),
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(`greenapi ${res.status}: ${JSON.stringify(body)}`);
-  return body; // { idMessage: "..." }
+  return body;
 }
 
-// --- Setup helper: list all chats so you can find your group ID ---
+// --- Setup helper ---
 async function listChats(env) {
   const url = `https://api.green-api.com/waInstance${env.GREENAPI_ID}/getChats/${env.GREENAPI_TOKEN}`;
   const res = await fetch(url);
